@@ -2,9 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-COPY src ./src
+COPY README.md ./
+COPY sandbox ./sandbox
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ./sandbox
 
 CMD ["sandbox-demo", "demo"]

@@ -1,12 +1,12 @@
 import { spawn } from 'node:child_process';
 
-import { PYTHON_BIN, SANDBOX_MODULE, repoRoot } from '../config/env.js';
+import { PYTHON_BIN, SANDBOX_MODULE, sandboxRoot } from '../config/env.js';
 import { parseJsonOutput } from '../utils/http.js';
 
 function runPythonCli(args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(PYTHON_BIN, ['-m', SANDBOX_MODULE, ...args], {
-      cwd: repoRoot,
+      cwd: sandboxRoot,
       env: process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });

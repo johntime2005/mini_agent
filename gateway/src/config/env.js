@@ -7,6 +7,9 @@ const __dirname = path.dirname(__filename);
 // gateway/src/config/ -> gateway/ -> repo root
 export const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
+// Python sandbox subproject root (mirrors gateway/ layout)
+export const sandboxRoot = path.resolve(repoRoot, 'sandbox');
+
 export const GATEWAY_CONFIG_PATH =
   process.env.GATEWAY_CONFIG_PATH ||
   path.join(repoRoot, '.mini-agent', 'gateway-config.json');

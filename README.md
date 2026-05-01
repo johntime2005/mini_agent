@@ -24,7 +24,7 @@
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ./sandbox
 sandbox-demo demo
 ```
 
@@ -104,7 +104,7 @@ sandbox-demo cleanup-session <session_id>
 
 - Python 3.11+
 - Node.js 18+
-- 已完成 Python 包安装：`pip install -e .`
+- 已完成 Python 包安装：`pip install -e ./sandbox`
 - 可用的大模型兼容接口（默认按 OpenAI Chat Completions 协议调用）
 
 ### 安装网关依赖
