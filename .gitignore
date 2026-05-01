@@ -13,3 +13,4 @@ htmlcov/
 gateway/node_modules/
 gateway/.env
 .mini-agent/
+.spec-workflow/
