@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mini-agent-api"
+version = "0.1.0"
+description = "FastAPI service exposing the mini-agent sandbox over HTTP, with optional DeepSeek code generation"
+requires-python = ">=3.11"
+dependencies = [
+    "mini-agent-sandbox",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "openai>=1.40",
+    "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

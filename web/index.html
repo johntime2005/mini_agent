@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini Agent · AI 代码沙盒</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.453.0/font/lucide.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <i class="lucide lucide-bot"></i>
+      <span>Mini Agent</span>
+      <small>DeepSeek × Sandbox</small>
+    </div>
+    <div class="topbar-right">
+      <label class="api-field">
+        <span>API</span>
+        <input id="apiBase" type="text" value="http://localhost:8000" />
+      </label>
+      <span id="statusDot" class="status-dot" title="未检测"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左侧：代码编辑区 -->
+    <section class="panel editor-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="lucide lucide-code-2"></i>
+          <span>AI 生成代码 / 手动编辑区</span>
+        </div>
+        <div class="panel-actions">
+          <button id="runCodeBtn" class="btn btn-secondary" title="将左侧代码直接发送到 /api/run_code">
+            <i class="lucide lucide-play"></i>
+            仅运行代码
+          </button>
+          <button id="clearCodeBtn" class="btn btn-ghost" title="清空">
+            <i class="lucide lucide-eraser"></i>
+          </button>
+        </div>
+      </div>
+      <textarea id="codeArea" spellcheck="false" placeholder="# 这里会显示 AI 生成的 Python 代码，您也可以手动修改后点击「仅运行代码」"></textarea>
+    </section>
+
+    <!-- 右侧：AI 对话区 -->
+    <section class="panel chat-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="lucide lucide-message-square"></i>
+          <span>AI 对话</span>
+        </div>
+        <div class="panel-actions">
+          <button id="clearChatBtn" class="btn btn-ghost" title="清空对话">
+            <i class="lucide lucide-trash-2"></i>
+          </button>
+        </div>
+      </div>
+      <div id="chatList" class="chat-list">
+        <div class="chat-msg assistant">
+          <div class="avatar"><i class="lucide lucide-sparkles"></i></div>
+          <div class="bubble">
+            您好！请用自然语言描述您的需求，例如：<br />
+            <em>"写一个计算斐波那契数列前 10 项的脚本"</em><br />
+            我会让 DeepSeek 生成 Python 代码，并立即在沙盒中运行。
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <textarea id="promptInput" rows="3" placeholder="描述您的需求，例如：写一个快速排序的实现并测试..."></textarea>
+        <button id="sendBtn" class="btn btn-primary">
+          <i class="lucide lucide-send"></i>
+          <span id="sendBtnText">一键发送并执行</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 底部：终端 -->
+    <section class="panel terminal-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="lucide lucide-terminal"></i>
+          <span>执行结果 · Terminal</span>
+        </div>
+        <div class="panel-actions">
+          <span id="metaInfo" class="meta-info"></span>
+          <button id="clearTermBtn" class="btn btn-ghost" title="清空终端">
+            <i class="lucide lucide-eraser"></i>
+          </button>
+        </div>
+      </div>
+      <pre id="terminal" class="terminal"><span class="term-hint">$ 等待执行...</span></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

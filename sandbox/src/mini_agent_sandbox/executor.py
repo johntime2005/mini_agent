@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -15,13 +16,26 @@ class Executor:
     def run(self, request: SandboxRequest, session: SandboxSession) -> SandboxResult:
         started = time.perf_counter()
         executable = self._resolve_executable(request.command)
+
+        # Force UTF-8 in the child process so that non-ASCII stdout/stderr
+        # (e.g. Chinese) is not mangled on Windows where the default codepage
+        # is gbk/cp936. Both env var and -X utf8 flag are set defensively.
+        child_env = os.environ.copy()
+        child_env["PYTHONIOENCODING"] = "utf-8"
+
+        run_args: list[str] = [executable]
+        if request.command in {"python", "python3"}:
+            run_args.extend(["-X", "utf8"])
+        run_args.extend(request.args)
+
         process = subprocess.Popen(
-            [executable, *request.args],
+            run_args,
             cwd=session.workspace_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.DEVNULL,
             text=False,
+            env=child_env,
         )
         timeout = False
         try:

@@ -12,5 +12,6 @@ htmlcov/
 .DS_Store
 gateway/node_modules/
 gateway/.env
+.env
 .mini-agent/
 notes/

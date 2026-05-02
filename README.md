@@ -404,6 +404,54 @@ curl -X POST http://localhost:3000/generate-and-run \
 
 这适合作为后续增强版 agent runtime 的最小起点。
 
+## FastAPI 服务（`api/`）
+
+除了 Node.js gateway 之外，仓库还提供了一个 **Python 直连版** FastAPI 服务，
+位于 `api/`，与 `sandbox/`、`gateway/` 平级，把 `SandboxService` 直接封装成 HTTP 接口，
+并可选接入 DeepSeek 自动生成代码。
+
+### 接口
+
+- `GET  /api/health` — 健康检查
+- `POST /api/sessions` — 创建沙盒 session
+- `DELETE /api/sessions/{session_id}` — 销毁 session
+- `POST /api/sessions/{session_id}/files` — 写入 workspace 文件
+- `POST /api/sessions/{session_id}/execute` — 执行命令
+- `POST /api/run_code` — 一站式：建 session → 写代码 → 执行 → 清理
+- `POST /api/chat_and_run` — 通过 DeepSeek 把自然语言转成代码再执行
+
+CORS 已开放 `*`，便于前端联调。
+
+### 启动
+
+```bash
+pip install -e ./sandbox        # 第一次需要
+pip install -e ./api            # 第一次需要
+export DEEPSEEK_API_KEY=sk-...  # 仅在使用 /api/chat_and_run 时需要
+uvicorn mini_agent_api.server:app --port 8000 --reload
+```
+
+打开 `http://localhost:8000/docs` 可使用 Swagger UI 联调。
+
+> `DEEPSEEK_API_KEY` 也可以放在仓库根目录的 `.env` 文件里，`.env` 已经被 gitignore。
+
+## Web 前端（`web/`）
+
+`web/` 下是一个零依赖的纯静态前端（HTML + CSS + 原生 JS），用来调用上面的 FastAPI 服务：
+
+- 左侧代码编辑器、右侧聊天面板、底部终端的三栏布局
+- 顶部可配置 API base，支持健康状态轮询
+- 主按钮调用 `/api/chat_and_run`；附带「直接运行」按钮调用 `/api/run_code`
+
+### 启动方式
+
+```bash
+python -m http.server 5173 --directory web
+# 然后访问 http://localhost:5173
+```
+
+确保 FastAPI 服务在 `http://localhost:8000` 运行（或在页面顶部输入框里改成实际地址）。
+
 ## Docker
 
 ```bash
