@@ -5,6 +5,8 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .audit import audit_log
+from .errors import SandboxError
 from .executor import Executor
 from .policy import CommandPolicy
 from .session import SessionManager
@@ -22,13 +24,58 @@ class SandboxService:
         self.policy = policy or CommandPolicy()
         self.executor = executor or Executor()
 
-    def create_session(self) -> SandboxSession:
-        return self.session_manager.create_session()
+    def create_session(self, owner: str | None = None) -> SandboxSession:
+        return self.session_manager.create_session(owner=owner)
 
     def execute(self, request: SandboxRequest) -> SandboxResult:
         session = self.session_manager.get_session(request.session_id)
-        self.policy.validate(request, session)
-        result = self.executor.run(request, session)
+        # 策略校验：拦截要记一条 audit
+        try:
+            self.policy.validate(request, session)
+        except SandboxError as exc:
+            audit_log(
+                "policy.reject",
+                session_id=session.session_id,
+                command=request.command,
+                args=request.args,
+                reason=type(exc).__name__,
+                message=str(exc),
+            )
+            raise
+
+        audit_log(
+            "exec.start",
+            session_id=session.session_id,
+            command=request.command,
+            args=request.args,
+            timeout_ms=request.timeout_ms,
+        )
+        self.session_manager.update_status(session.session_id, "running")
+        try:
+            with self.session_manager.acquire_slot():
+                result = self.executor.run(request, session)
+        except Exception as exc:
+            audit_log(
+                "exec.error",
+                session_id=session.session_id,
+                error=type(exc).__name__,
+                message=str(exc),
+            )
+            self.session_manager.update_status(session.session_id, "idle")
+            raise
+
+        self._accumulate_usage(session, result)
+        self.session_manager.update_status(session.session_id, "idle")
+        audit_log(
+            "exec.end",
+            session_id=session.session_id,
+            success=result.success,
+            exit_code=result.exit_code,
+            timeout=result.timeout,
+            duration_ms=result.duration_ms,
+            cpu_time_ms=result.cpu_time_ms,
+            memory_peak_bytes=result.memory_peak_bytes,
+        )
         self._write_log(session, request, result)
         return result
 
@@ -44,6 +91,16 @@ class SandboxService:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         return target
+
+    @staticmethod
+    def _accumulate_usage(session: SandboxSession, result: SandboxResult) -> None:
+        u = session.resource_usage
+        u["executions"] = u.get("executions", 0) + 1
+        u["duration_ms"] = u.get("duration_ms", 0) + result.duration_ms
+        if result.cpu_time_ms is not None:
+            u["cpu_time_ms"] = u.get("cpu_time_ms", 0) + result.cpu_time_ms
+        if result.memory_peak_bytes is not None:
+            u["memory_peak_bytes"] = max(u.get("memory_peak_bytes", 0), result.memory_peak_bytes)
 
     def _write_log(self, session: SandboxSession, request: SandboxRequest, result: SandboxResult) -> None:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
