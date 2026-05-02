@@ -103,7 +103,7 @@ sandbox-demo cleanup-session <session_id>
 ### 前置要求
 
 - Python 3.11+
-- Node.js 18+
+- Bun 1.0+
 - 已完成 Python 包安装：`pip install -e ./sandbox`
 - 可用的大模型兼容接口（默认按 OpenAI Chat Completions 协议调用）
 
@@ -111,7 +111,7 @@ sandbox-demo cleanup-session <session_id>
 
 ```bash
 cd gateway
-npm install
+bun install
 ```
 
 ### 环境变量
@@ -209,7 +209,7 @@ export MAX_CONTEXT_PREVIEW_LENGTH=4000
 
 ```bash
 cd gateway
-npm start
+bun start
 ```
 
 ### 接口
