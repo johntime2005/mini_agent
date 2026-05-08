@@ -10,6 +10,9 @@ import logging
 from typing import Any
 
 logger = logging.getLogger("mini_agent_sandbox.audit")
+# 注册 NullHandler 防止"No handlers could be found"警告：如调用方未
+# 自配 handler，audit 事件被默默丢弃，不污染应用日志输出。
+logger.addHandler(logging.NullHandler())
 
 
 def audit_log(event: str, level: int = logging.INFO, **fields: Any) -> None:
