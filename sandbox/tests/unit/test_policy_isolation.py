@@ -31,19 +31,18 @@ def _req(sandbox_session, args, timeout_ms: int = 1000) -> SandboxRequest:
 # ---------------------------------------------------------------------------
 # 敏感路径
 # ---------------------------------------------------------------------------
-def test_policy_rejects_forbidden_path_prefix(sandbox_session, tmp_path):
-    """workspace 本身如果解析到敏感路径前缀也必须被拒。
+def test_policy_rejects_forbidden_workspace_root(sandbox_session, tmp_path):
+    """workspace_dir 落在敏感路径前缀下时，``validate_workspace`` 必须拒绝。
 
-    做法：用一个假 session，其 workspace_dir 指向敏感路径前缀下的一个
-    子目录——policy 在解析脚本绝对路径时，该路径会命中 forbidden 检查。
+    自 PR3 评审 #8 起，敏感路径检查从 ``_resolve_workspace_path`` 上移到
+    ``CommandPolicy.validate_workspace``，由 ``SandboxService.create_session``
+    在创建会话后立即调用一次，避免每个 candidate 重复检查。
     """
     # 把 forbidden_paths 临时指向 tmp_path，模拟"workspace 落在敏感区"。
-    fake_forbidden = (str(tmp_path),)
-    policy = CommandPolicy(forbidden_paths=fake_forbidden)
+    policy = CommandPolicy(forbidden_paths=(str(tmp_path),))
 
-    # sandbox_session.workspace_dir 正是 tmp_path 下的子目录
     with pytest.raises(PathForbiddenError):
-        policy.validate(_req(sandbox_session, ["hello.py"]), sandbox_session)
+        policy.validate_workspace(sandbox_session.workspace_dir)
 
 
 # ---------------------------------------------------------------------------
