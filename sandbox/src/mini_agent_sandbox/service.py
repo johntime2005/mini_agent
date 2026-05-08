@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .audit import audit_log
-from .errors import SandboxError
+from .errors import SandboxError, SourceTamperedError
 from .executor import Executor
 from .policy import CommandPolicy
 from .session import SessionManager
@@ -59,6 +60,12 @@ class SandboxService:
             )
             raise
 
+        # TOCTOU 防御：在 policy 校验后立即对源码取 hash 快照，
+        # 等真正执行前再算一次，不一致则视为被篡改。这只是
+        # defense-in-depth（无法完全防住 hash 与 exec 之间的 race），
+        # 但可以挡住"先合法、后篡改"的最常见攻击形态。
+        script_path, script_hash = self._snapshot_python_source(request, session)
+
         audit_log(
             "exec.start",
             session_id=session.session_id,
@@ -72,6 +79,8 @@ class SandboxService:
                 # 槽位获取成功后再切到 running，避免饱和等待期间状态失真。
                 self.session_manager.update_status(session.session_id, "running")
                 running_marked = True
+                if script_hash is not None:
+                    self._verify_python_source(script_path, script_hash)
                 result = self.executor.run(request, session)
         except Exception as exc:
             audit_log(
@@ -122,6 +131,46 @@ class SandboxService:
             u["cpu_time_ms"] = u.get("cpu_time_ms", 0) + result.cpu_time_ms
         if result.memory_peak_bytes is not None:
             u["memory_peak_bytes"] = max(u.get("memory_peak_bytes", 0), result.memory_peak_bytes)
+
+    @staticmethod
+    def _snapshot_python_source(
+        request: SandboxRequest, session: SandboxSession
+    ) -> tuple[Path | None, str | None]:
+        """对将要执行的 .py 文件取 SHA-256 快照。仅在能定位到工作区
+        内的可读文件时返回 (path, hex_digest)；否则 (None, None)。
+        """
+        if request.command not in {"python", "python3"}:
+            return None, None
+        if not request.args or request.args[0].startswith("-"):
+            return None, None
+        candidate = (session.workspace_dir / request.args[0]).resolve()
+        try:
+            candidate.relative_to(session.workspace_dir.resolve())
+        except ValueError:
+            return None, None
+        if not candidate.is_file():
+            return None, None
+        try:
+            digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+        except OSError:
+            return None, None
+        return candidate, digest
+
+    @staticmethod
+    def _verify_python_source(script_path: Path | None, expected_hash: str) -> None:
+        """与 _snapshot_python_source 取到的 hash 比对，不一致抛 SourceTamperedError。"""
+        if script_path is None:
+            return
+        try:
+            current = hashlib.sha256(script_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise SourceTamperedError(
+                f"Failed to re-read script for TOCTOU verification: {script_path}"
+            ) from exc
+        if current != expected_hash:
+            raise SourceTamperedError(
+                f"Script content changed between policy validation and execution: {script_path}"
+            )
 
     def _write_log(self, session: SandboxSession, request: SandboxRequest, result: SandboxResult) -> None:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
