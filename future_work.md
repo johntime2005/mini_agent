@@ -16,7 +16,11 @@
 - 增加 CPU / 内存 / 执行时长 / 并发限制
 - 增加 session 元数据与审计日志
 - 增加更严格的隔离策略
-- 后续考虑容器级沙箱
+- 后续考虑容器级沙箱（DockerExecutor / FirecrackerExecutor / gVisor —
+  `BaseExecutor` 抽象已为此预留扩展点；安全边界详见 `sandbox/SECURITY.md`）
+- seccomp / Linux namespaces / cgroup v2 真隔离
+- TOCTOU 加固：使用 `pass_fds=[fd]` + `/dev/fd/{fd}` 让校验与执行
+  共用同一 inode（当前 service 层只做 SHA-256 重校验）
 
 ### 添加多步迭代功能
 

@@ -16,3 +16,9 @@ class ArgumentNotAllowedError(SandboxError):
 
 class PathForbiddenError(SandboxError):
     """Raised when a requested path escapes the sandbox workspace."""
+
+
+class SourceTamperedError(SandboxError):
+    """Raised when a python source file changes between policy validation
+    and execution (TOCTOU defense, see ``service.SandboxService.execute``).
+    """
