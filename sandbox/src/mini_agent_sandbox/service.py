@@ -14,15 +14,31 @@ from .types import SandboxRequest, SandboxResult, SandboxSession
 
 
 class SandboxService:
+    """沙箱顶层服务。
+
+    .. note::
+       默认 ``SandboxService()`` **不启用** ``RLIMIT_CPU`` / ``RLIMIT_AS``。
+       若需对未提供 ``executor`` 的调用路径打开默认资源限制，请通过
+       ``default_max_cpu_seconds`` / ``default_max_memory_bytes`` 显式开启；
+       已自行传入 ``executor`` 的调用方应自行配置其上限。
+    """
+
     def __init__(
         self,
         session_manager: SessionManager | None = None,
         policy: CommandPolicy | None = None,
         executor: Executor | None = None,
+        default_max_cpu_seconds: int | None = None,
+        default_max_memory_bytes: int | None = None,
     ) -> None:
         self.session_manager = session_manager or SessionManager()
         self.policy = policy or CommandPolicy()
-        self.executor = executor or Executor()
+        if executor is None:
+            executor = Executor(
+                max_cpu_seconds=default_max_cpu_seconds,
+                max_memory_bytes=default_max_memory_bytes,
+            )
+        self.executor = executor
 
     def create_session(self, owner: str | None = None) -> SandboxSession:
         return self.session_manager.create_session(owner=owner)
