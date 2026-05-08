@@ -61,17 +61,26 @@ class CommandPolicy:
         self.module_allowlist = module_allowlist or frozenset()
 
     def validate(self, request: SandboxRequest, session: SandboxSession) -> None:
-        
         if request.command not in self.allowed_commands:
             raise CommandNotAllowedError(f"Command is not allowed: {request.command}")
-        
         if request.timeout_ms <= 0 or request.timeout_ms > self.max_timeout_ms:
             raise ArgumentNotAllowedError(
                 f"timeout_ms must be between 1 and {self.max_timeout_ms}, got {request.timeout_ms}"
             )
         if request.command == "python":
             self._validate_python_args(request.args, session.workspace_dir)
-    # 检查python命令参数
+
+    def validate_workspace(self, workspace_dir: Path) -> None:
+        """对 workspace_dir 做一次性敏感路径校验。
+
+        原实现把这个检查塞在 ``_resolve_workspace_path`` 里，对**每个
+        candidate**重复执行；但只要 workspace 本身合法、candidate 又被
+        ``relative_to`` 检查约束在 workspace 之内，candidate 就不可能
+        落到 ``/etc`` 等敏感前缀里。把校验前移到 session 创建阶段，
+        既避免重复也修正了原"几乎不触发"的问题。
+        """
+        self._check_forbidden_path(workspace_dir.resolve())
+
     def _validate_python_args(self, args: list[str], workspace_dir: Path) -> None:
         if not args:
             raise ArgumentNotAllowedError("python requires a target .py file inside the sandbox workspace")
@@ -93,7 +102,6 @@ class CommandPolicy:
         workspace_root = workspace_dir.resolve()
         if candidate != workspace_root and workspace_root not in candidate.parents:
             raise PathForbiddenError(f"Path escapes sandbox workspace: {relative_path}")
-        self._check_forbidden_path(candidate)
         return candidate
 
     # ------------------------------------------------------------------

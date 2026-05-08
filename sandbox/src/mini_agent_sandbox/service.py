@@ -42,7 +42,14 @@ class SandboxService:
         self.executor = executor
 
     def create_session(self, owner: str | None = None) -> SandboxSession:
-        return self.session_manager.create_session(owner=owner)
+        session = self.session_manager.create_session(owner=owner)
+        # 一次性校验 workspace 是否落在敏感路径上（避免每次 execute 重复检查）。
+        try:
+            self.policy.validate_workspace(session.workspace_dir)
+        except SandboxError:
+            self.session_manager.cleanup_session(session.session_id)
+            raise
+        return session
 
     def execute(self, request: SandboxRequest) -> SandboxResult:
         session = self.session_manager.get_session(request.session_id)
