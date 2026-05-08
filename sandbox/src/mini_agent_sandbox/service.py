@@ -66,9 +66,12 @@ class SandboxService:
             args=request.args,
             timeout_ms=request.timeout_ms,
         )
-        self.session_manager.update_status(session.session_id, "running")
+        running_marked = False
         try:
             with self.session_manager.acquire_slot():
+                # 槽位获取成功后再切到 running，避免饱和等待期间状态失真。
+                self.session_manager.update_status(session.session_id, "running")
+                running_marked = True
                 result = self.executor.run(request, session)
         except Exception as exc:
             audit_log(
@@ -77,7 +80,9 @@ class SandboxService:
                 error=type(exc).__name__,
                 message=str(exc),
             )
-            self.session_manager.update_status(session.session_id, "idle")
+            # 仅当已切到 running 才回退到 idle；否则保留原状态（如 created）。
+            if running_marked:
+                self.session_manager.update_status(session.session_id, "idle")
             raise
 
         self._accumulate_usage(session, result)
