@@ -35,10 +35,12 @@ _DEFAULT_FORBIDDEN_PATHS: tuple[str, ...] = (
 )
 
 # 默认禁用的网络/危险模块（``import`` 顶级名一致时即拒绝）。
+# 注意：``asyncio`` 不在默认黑名单——纯本地协程脚本（如 ``asyncio.sleep``）
+# 应被允许；如需禁用 ``asyncio.open_connection`` 等网络副作用，请在调
+# 用方显式追加。
 _DEFAULT_FORBIDDEN_MODULES: frozenset[str] = frozenset({
     "socket", "requests", "urllib", "urllib2", "urllib3",
     "http", "httpx", "ftplib", "telnetlib", "smtplib",
-    "asyncio",  # 含 asyncio.open_connection；如需放开，显式用白名单
     "ctypes",   # 可调用系统 API
     "subprocess",
 })
@@ -134,13 +136,23 @@ class CommandPolicy:
         return p
 
     def _validate_python_source(self, script_path: Path) -> None:
-        """AST 级扫描脚本中的 ``import``，拦截黑名单模块。"""
+        """AST 级扫描脚本中的 ``import``，拦截黑名单模块。
+
+        语法错误**也视为拒绝**：评审指出，攻击者可故意构造语法错误
+        让 AST 黑名单豁免，再在运行期通过 ``compile(...)`` / ``exec(...)``
+        恢复执行。把 ``SyntaxError`` 同样转成 ``ArgumentNotAllowedError``，
+        避免该绕过路径。``OSError`` 仍交给运行期报错。
+        """
         try:
             source = script_path.read_text(encoding="utf-8")
-            tree = ast.parse(source, filename=str(script_path))
-        except (OSError, SyntaxError):
-            # 读不出来 / 语法错误交给运行期报错，不在策略层阻断。
+        except OSError:
             return
+        try:
+            tree = ast.parse(source, filename=str(script_path))
+        except SyntaxError as exc:
+            raise ArgumentNotAllowedError(
+                f"Script has invalid Python syntax and cannot be statically validated: {exc}"
+            ) from exc
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
