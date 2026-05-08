@@ -1,3 +1,18 @@
+"""命令与源码策略层。
+
+.. warning::
+   ``CommandPolicy._validate_python_source`` 做的是 **AST 级静态扫描**，仅
+   覆盖直接的 ``import`` / ``from ... import``。它**可被绕过**：
+
+   * ``__import__("socket")``、``importlib.import_module("socket")``
+   * ``exec("import socket")`` / ``eval(...)`` / 字符串拼接动态导入
+   * 通过有副作用的第三方包间接触发禁用模块
+
+   因此本层应被定位为 **defense-in-depth**，而非真正的安全边界。要做
+   到对抗性隔离，请依赖 ``RLIMIT_*`` / ``seccomp`` / namespace / 容器 /
+   独立 UID 等系统层机制。详见仓库根目录 ``SECURITY.md``。
+"""
+
 from __future__ import annotations
 
 import ast
@@ -85,13 +100,30 @@ class CommandPolicy:
     # 新增：敏感路径与模块检查
     # ------------------------------------------------------------------
     def _check_forbidden_path(self, path: Path) -> None:
-        # 大小写归一化（Windows 下 C:\Windows 与 c:\windows 等价）
-        norm = str(path)
-        norm_cmp = norm.lower() if sys.platform == "win32" else norm
+        """检查路径是否落入敏感目录前缀。
+
+        使用 :py:meth:`pathlib.Path.is_relative_to` 做语义比较（Python 3.9+），
+        避免手工 ``\\`` vs ``/`` 字符串前缀判断在分隔符混用场景下的歧义。
+        Windows 下统一小写化做大小写不敏感比较；非当前平台的 forbidden
+        条目（例如 Linux 进程上 ``C:\\Windows``）会被 ``Path`` 解析为不存
+        在的相对路径，自然不命中。
+        """
+        candidate = self._normalize_for_compare(Path(path))
         for forbidden in self.forbidden_paths:
-            f_cmp = forbidden.lower() if sys.platform == "win32" else forbidden
-            if norm_cmp == f_cmp or norm_cmp.startswith(f_cmp.rstrip("/\\") + ("\\" if "\\" in f_cmp else "/")):
-                raise PathForbiddenError(f"Path touches forbidden location: {path}")
+            forbidden_p = self._normalize_for_compare(Path(forbidden))
+            try:
+                if candidate.is_relative_to(forbidden_p):
+                    raise PathForbiddenError(f"Path touches forbidden location: {path}")
+            except ValueError:
+                # is_relative_to 在 Python 3.9-3.11 上会抛 ValueError；3.12+ 改为返回 False。
+                continue
+
+    @staticmethod
+    def _normalize_for_compare(p: Path) -> Path:
+        """Windows 下做小写归一化（C:\\Windows ≡ c:\\windows）。其他平台原样。"""
+        if sys.platform == "win32":
+            return Path(str(p).lower())
+        return p
 
     def _validate_python_source(self, script_path: Path) -> None:
         """AST 级扫描脚本中的 ``import``，拦截黑名单模块。"""
