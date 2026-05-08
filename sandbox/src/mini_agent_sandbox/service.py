@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,7 +11,7 @@ from .audit import audit_log
 from .errors import SandboxError, SourceTamperedError
 from .executor import Executor
 from .policy import CommandPolicy
-from .session import SessionManager
+from .session import ConcurrencyLimitError, SessionManager
 from .types import SandboxRequest, SandboxResult, SandboxSession
 
 
@@ -65,6 +66,9 @@ class SandboxService:
                 reason=type(exc).__name__,
                 message=str(exc),
             )
+            # 与 audit 对齐：被策略拒绝后状态归位到 idle，便于外部
+            # 观察"这个 session 不再处于刚创建的 created 期、但也没在跑"。
+            self.session_manager.update_status(session.session_id, "idle")
             raise
 
         # TOCTOU 防御：在 policy 校验后立即对源码取 hash 快照，
@@ -89,7 +93,8 @@ class SandboxService:
                 if script_hash is not None:
                     self._verify_python_source(script_path, script_hash)
                 result = self.executor.run(request, session)
-        except Exception as exc:
+        except (SandboxError, OSError, subprocess.SubprocessError, ConcurrencyLimitError) as exc:
+            # 收窄异常范围，避免吞 KeyboardInterrupt / SystemExit 等。
             audit_log(
                 "exec.error",
                 session_id=session.session_id,

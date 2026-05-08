@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 
 # Session 状态机：created → running → idle/terminated
-SessionStatus = str  # "created" | "running" | "idle" | "terminated"
+SessionStatus = Literal["created", "running", "idle", "terminated"]
 
 
 @dataclass(slots=True)
