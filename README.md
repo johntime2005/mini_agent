@@ -21,11 +21,21 @@
 
 ## 快速开始
 
+本仓库使用 [uv](https://docs.astral.sh/uv/) 作为统一的 Python 包/环境管理器，
+仓库根目录是一个 **uv workspace**，成员包括 `sandbox/`、`api/`。
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ./sandbox
-sandbox-demo demo
+# 一次性安装所有 workspace 成员（sandbox + api）到 .venv
+uv sync
+
+# 运行 sandbox demo
+uv run sandbox-demo demo
+```
+
+如果只想安装 sandbox 子包：
+
+```bash
+uv sync --package mini-agent-sandbox
 ```
 
 ## 手动运行
@@ -58,13 +68,13 @@ print(result["parsed_output"])
 直接运行完整示例：
 
 ```bash
-python examples/python_callable_tool_demo.py
+uv run python examples/python_callable_tool_demo.py
 ```
 
 ### 1. 创建 session
 
 ```bash
-sandbox-demo create-session
+uv run sandbox-demo create-session
 ```
 
 记录输出中的 `session_id` 和 `workspace_dir`。
@@ -76,19 +86,19 @@ sandbox-demo create-session
 ### 3. 执行脚本
 
 ```bash
-sandbox-demo run <session_id> main.py arg1 arg2
+uv run sandbox-demo run <session_id> main.py arg1 arg2
 ```
 
 ### 4. 写入文件
 
 ```bash
-printf 'print("hello")\n' | sandbox-demo write-file <session_id> hello.py --stdin
+printf 'print("hello")\n' | uv run sandbox-demo write-file <session_id> hello.py --stdin
 ```
 
 ### 5. 清理 session
 
 ```bash
-sandbox-demo cleanup-session <session_id>
+uv run sandbox-demo cleanup-session <session_id>
 ```
 
 ## Node.js / Express 网关
@@ -102,9 +112,10 @@ sandbox-demo cleanup-session <session_id>
 
 ### 前置要求
 
-- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) 0.5+（统一管理 Python 与依赖）
+- Python 3.11+（uv 会按需自动下载）
 - Bun 1.0+
-- 已完成 Python 包安装：`pip install -e ./sandbox`
+- 已完成 workspace 同步：`uv sync`
 - 可用的大模型兼容接口（默认按 OpenAI Chat Completions 协议调用）
 
 ### 安装网关依赖
@@ -393,6 +404,80 @@ curl -X POST http://localhost:3000/generate-and-run \
 - `contextLimit` 控制本次调用注入给大模型的最近上下文条数
 - 这些缓存现在按 `sessionId` 隔离，注入时只读取当前 session 的最近历史
 
+#### 11. Agent 多步循环 `POST /agent/run`
+
+把单次 `prompt → code → execute` 升级为 `plan → execute → observe → retry` 循环。
+模型可以在一次任务内多次调用工具直到目标达成或耗尽预算。
+
+请求体：
+
+```json
+{
+  "goal": "Generate the first 10 fibonacci numbers and save them to fib.txt, then verify the file content.",
+  "sessionId": "sess_xxx",
+  "maxSteps": 6,
+  "maxConsecutiveFailures": 3,
+  "contextLimit": 10,
+  "defaultToolTimeoutMs": 5000
+}
+```
+
+字段说明：
+
+- `goal`（必填）：自然语言任务目标
+- `sessionId`（可选）：复用已有 sandbox session；不传时网关创建临时 session 并在结束后立即清理
+- `maxSteps`：本次最大循环步数，受 `AGENT_MAX_STEPS` 上限保护（默认 20）
+- `maxConsecutiveFailures`：连续工具失败到达该值后中止
+- `contextLimit`：注入给模型的历史上下文条数
+- `defaultToolTimeoutMs`：`run_python` 工具的默认超时（仍会被 `MAX_TIMEOUT_MS` 收紧）
+
+可用工具（OpenAI function calling 协议）：
+
+| 工具         | 作用                                       |
+| ------------ | ------------------------------------------ |
+| `write_file` | 在 workspace 写入文本文件                   |
+| `run_python` | 执行 workspace 内已存在的 `.py`             |
+| `read_file`  | 读取 workspace 内的文本文件                 |
+| `list_files` | 列出 workspace 全部文件（递归）             |
+| `finish`     | 模型主动声明任务完成，并附最终文字总结      |
+
+返回示例：
+
+```json
+{
+  "sessionId": "sess_xxx",
+  "status": "done",
+  "finalAnswer": "Wrote fib.txt with 10 numbers and verified content.",
+  "stepsTaken": 3,
+  "stepBudget": 6,
+  "steps": [
+    {
+      "step": 1,
+      "thought": "I will create the script first.",
+      "toolCalls": [{ "name": "write_file", "arguments": { "path": "fib.py", "content": "..." } }],
+      "observations": [{ "name": "write_file", "success": true, "observation": { "ok": true, "path": "..." } }]
+    },
+    { "step": 2, "toolCalls": [{ "name": "run_python", "arguments": { "path": "fib.py" } }], "observations": [{ "success": true, "observation": { "stdout": "0 1 1 2 ...\n", "exit_code": 0 } }] },
+    { "step": 3, "toolCalls": [{ "name": "finish", "arguments": { "summary": "..." } }], "observations": [{ "success": true }], "terminator": "finish_tool" }
+  ],
+  "sessionCleanup": { "mode": "ttl", "cleanup_at": "..." }
+}
+```
+
+`status` 取值：
+
+- `done` — 模型主动 `finish`，或在没有 tool_calls 的情况下直接给出最终回复
+- `forced_stop` — 步数预算耗尽
+- `aborted` — 连续工具失败超过阈值
+
+环境变量（新增）：
+
+```bash
+export AGENT_DEFAULT_MAX_STEPS=6                 # 默认步数预算
+export AGENT_MAX_STEPS=20                        # 单次任务硬上限
+export AGENT_DEFAULT_MAX_CONSECUTIVE_FAILURES=3  # 连续失败中止阈值
+```
+
 ## 当前实现边界
 
 为了先做最简单处理，当前网关采用以下策略：
@@ -425,10 +510,9 @@ CORS 已开放 `*`，便于前端联调。
 ### 启动
 
 ```bash
-pip install -e ./sandbox        # 第一次需要
-pip install -e ./api            # 第一次需要
-export DEEPSEEK_API_KEY=sk-...  # 仅在使用 /api/chat_and_run 时需要
-uvicorn mini_agent_api.server:app --port 8000 --reload
+uv sync                          # 第一次需要，会同时安装 sandbox 与 api
+export DEEPSEEK_API_KEY=sk-...   # 仅在使用 /api/chat_and_run 时需要
+uv run uvicorn mini_agent_api.server:app --port 8000 --reload
 ```
 
 打开 `http://localhost:8000/docs` 可使用 Swagger UI 联调。
@@ -446,7 +530,7 @@ uvicorn mini_agent_api.server:app --port 8000 --reload
 ### 启动方式
 
 ```bash
-python -m http.server 5173 --directory web
+uv run python -m http.server 5173 --directory web
 # 然后访问 http://localhost:5173
 ```
 

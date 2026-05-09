@@ -1,0 +1,24 @@
+[project]
+name = "mini-agent"
+version = "0.1.0"
+description = "Mini agent monorepo: Python sandbox + FastAPI service, managed with uv workspaces."
+requires-python = ">=3.11"
+dependencies = [
+    "mini-agent-sandbox",
+    "mini-agent-api",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["sandbox", "api"]
+
+[tool.uv.sources]
+mini-agent-sandbox = { workspace = true }
+mini-agent-api = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
