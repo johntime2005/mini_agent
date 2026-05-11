@@ -73,7 +73,7 @@ def test_get_session_keeps_metadata(session_manager):
 # ---------------------------------------------------------------------------
 def test_execute_emits_audit_events_and_accumulates_usage(service, audit_capture):
     session = service.create_session(owner="alice")
-    (session.workspace_dir / "ok.py").write_text("print('ok')\n", encoding="utf-8")
+    (session.workdir / "ok.py").write_text("print('ok')\n", encoding="utf-8")
     req = SandboxRequest(session_id=session.session_id, command="python", args=["ok.py"], timeout_ms=5000)
 
     result = service.execute(req)

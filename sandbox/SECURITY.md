@@ -14,7 +14,7 @@ isolation (container, namespace, seccomp, jailed UID, …).
 ## What the sandbox does
 
 - **Workspace confinement** — all child-process file operations are
-  rooted in a per-session `workspace_dir`; path traversal via `..` is
+  rooted in a per-session `workdir`; path traversal via `..` is
   rejected by `_resolve_workspace_path`.
 - **Forbidden-path guard** — `_check_forbidden_path` rejects scripts
   whose resolved location lands on `/etc`, `/proc`, `/sys`, `C:\Windows`,
@@ -65,7 +65,7 @@ If you need to run untrusted code, layer one or more of:
 1. **Container** with `--network=none --read-only --pids-limit` and a
    non-root user.
 2. **Linux namespaces** (`unshare -Uirpfn ...`) plus a writable tmpfs
-   `workspace_dir`.
+  `workdir`.
 3. **`seccomp` filter** restricting to a small allowlist (`read`,
    `write`, `exit`, `brk`, `mmap`, `rt_sigreturn`).
 4. **Dedicated UID** with `chroot` and quota-limited home directory.

@@ -14,7 +14,7 @@ SessionStatus = Literal["created", "running", "idle", "terminated"]
 class SandboxSession:
     session_id: str
     root_dir: Path
-    workspace_dir: Path
+    workdir: Path
     logs_dir: Path
     # 元数据（带默认值，向后兼容）
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

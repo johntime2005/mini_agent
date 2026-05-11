@@ -32,7 +32,7 @@ def _req(sandbox_session, args, timeout_ms: int = 1000) -> SandboxRequest:
 # 敏感路径
 # ---------------------------------------------------------------------------
 def test_policy_rejects_forbidden_workspace_root(sandbox_session, tmp_path):
-    """workspace_dir 落在敏感路径前缀下时，``validate_workspace`` 必须拒绝。
+    """workdir 落在敏感路径前缀下时，``validate_workspace`` 必须拒绝。
 
     自 PR3 评审 #8 起，敏感路径检查从 ``_resolve_workspace_path`` 上移到
     ``CommandPolicy.validate_workspace``，由 ``SandboxService.create_session``
@@ -42,14 +42,14 @@ def test_policy_rejects_forbidden_workspace_root(sandbox_session, tmp_path):
     policy = CommandPolicy(forbidden_paths=(str(tmp_path),))
 
     with pytest.raises(PathForbiddenError):
-        policy.validate_workspace(sandbox_session.workspace_dir)
+        policy.validate_workspace(sandbox_session.workdir)
 
 
 # ---------------------------------------------------------------------------
 # 网络/危险模块
 # ---------------------------------------------------------------------------
 def test_policy_rejects_network_import(sandbox_session):
-    (sandbox_session.workspace_dir / "net.py").write_text(
+    (sandbox_session.workdir / "net.py").write_text(
         "import socket\nprint('x')\n", encoding="utf-8"
     )
     policy = CommandPolicy()
@@ -58,7 +58,7 @@ def test_policy_rejects_network_import(sandbox_session):
 
 
 def test_policy_rejects_from_import_of_forbidden_module(sandbox_session):
-    (sandbox_session.workspace_dir / "r.py").write_text(
+    (sandbox_session.workdir / "r.py").write_text(
         "from requests import get\n", encoding="utf-8"
     )
     policy = CommandPolicy()
@@ -68,7 +68,7 @@ def test_policy_rejects_from_import_of_forbidden_module(sandbox_session):
 
 def test_policy_allowlist_overrides_forbidden(sandbox_session):
     """白名单里放行的模块即便在黑名单里也应通过。"""
-    (sandbox_session.workspace_dir / "net.py").write_text(
+    (sandbox_session.workdir / "net.py").write_text(
         "import socket\n", encoding="utf-8"
     )
     policy = CommandPolicy(module_allowlist=frozenset({"socket"}))
@@ -78,7 +78,7 @@ def test_policy_allowlist_overrides_forbidden(sandbox_session):
 
 def test_policy_accepts_benign_imports(sandbox_session):
     """不在黑名单里的模块（如 json）应正常通过。"""
-    (sandbox_session.workspace_dir / "ok.py").write_text(
+    (sandbox_session.workdir / "ok.py").write_text(
         "import json\nprint(json.dumps({'x': 1}))\n", encoding="utf-8"
     )
     policy = CommandPolicy()

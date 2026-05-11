@@ -45,7 +45,7 @@ def main() -> None:
         session = service.create_session()
         print(json.dumps({
             "session_id": session.session_id,
-            "workspace_dir": str(session.workspace_dir),
+                "workdir": str(session.workdir),
             "logs_dir": str(session.logs_dir),
         }, indent=2))
         return
@@ -69,7 +69,7 @@ def main() -> None:
             json.dumps(
                 {
                     "session_id": session.session_id,
-                    "workspace_dir": str(session.workspace_dir),
+                    "workdir": str(session.workdir),
                     "result": {
                         "success": result.success,
                         "exit_code": result.exit_code,

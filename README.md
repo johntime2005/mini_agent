@@ -77,11 +77,11 @@ uv run python examples/python_callable_tool_demo.py
 uv run sandbox-demo create-session
 ```
 
-记录输出中的 `session_id` 和 `workspace_dir`。
+记录输出中的 `session_id` 和 `workdir`。
 
 ### 2. 在 workspace 中写入脚本
 
-例如在 `workspace_dir` 下写一个 `main.py`。
+例如在 `workdir` 下写一个 `main.py`。
 
 ### 3. 执行脚本
 
@@ -251,7 +251,7 @@ curl -X POST http://localhost:3000/sandbox/sessions
 ```json
 {
   "session_id": "sess_xxx",
-  "workspace_dir": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workspace",
+  "workdir": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workdir",
   "logs_dir": "/tmp/mini-agent-sandbox/sessions/sess_xxx/logs",
   "cleanup_at": "2026-04-25T12:00:00.000Z"
 }
@@ -276,7 +276,7 @@ curl -X POST http://localhost:3000/generate-and-run \
 {
   "sessionId": "sess_xxx",
   "fileName": "fibonacci.py",
-  "filePath": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workspace/fibonacci.py",
+  "filePath": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workdir/fibonacci.py",
   "timeoutMs": 5000,
   "generatedCode": "numbers = [0, 1]\n...",
   "sessionCleanup": {
@@ -319,7 +319,7 @@ curl -X POST http://localhost:3000/execute-code \
 {
   "sessionId": "sess_xxx",
   "fileName": "hello.py",
-  "filePath": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workspace/hello.py",
+  "filePath": "/tmp/mini-agent-sandbox/sessions/sess_xxx/workdir/hello.py",
   "timeoutMs": 5000,
   "code": "print(\"hello direct execution\")",
   "sessionCleanup": {

@@ -37,8 +37,8 @@ def run_python_tool(
         )
         return {
             "session_id": session.session_id,
-            "workspace_dir": str(session.workspace_dir),
-            "script_path": str(Path(target).relative_to(session.workspace_dir)),
+            "workdir": str(session.workdir),
+            "script_path": str(Path(target).relative_to(session.workdir)),
             "result": asdict(result),
         }
     finally:

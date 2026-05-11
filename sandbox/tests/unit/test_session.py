@@ -49,9 +49,9 @@ def test_create_session_builds_workspace_and_logs(session_manager):
     # 否则 cleanup 时也会错。
     assert session.root_dir == session_manager.sessions_dir / session.session_id
 
-    # workspace 和 logs 目录都应该真实存在（is_dir 顺带验证它是目录
+    # workdir 和 logs 目录都应该真实存在（is_dir 顺带验证它是目录
     # 而不是意外被当成文件）。
-    assert session.workspace_dir.is_dir()
+    assert session.workdir.is_dir()
     assert session.logs_dir.is_dir()
 
 

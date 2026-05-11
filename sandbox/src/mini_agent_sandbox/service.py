@@ -46,7 +46,7 @@ class SandboxService:
         session = self.session_manager.create_session(owner=owner)
         # 一次性校验 workspace 是否落在敏感路径上（避免每次 execute 重复检查）。
         try:
-            self.policy.validate_workspace(session.workspace_dir)
+            self.policy.validate_workspace(session.workdir)
         except SandboxError:
             self.session_manager.cleanup_session(session.session_id)
             raise
@@ -126,10 +126,10 @@ class SandboxService:
 
     def write_workspace_file(self, session_id: str, relative_path: str, content: str) -> Path:
         session = self.session_manager.get_session(session_id)
-        target = (session.workspace_dir / relative_path).resolve()
-        workspace_root = session.workspace_dir.resolve()
+        target = (session.workdir / relative_path).resolve()
+        workspace_root = session.workdir.resolve()
         if target != workspace_root and workspace_root not in target.parents:
-            raise ValueError(f"Path escapes workspace: {relative_path}")
+            raise ValueError(f"Path escapes workdir: {relative_path}")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         return target
@@ -155,9 +155,9 @@ class SandboxService:
             return None, None
         if not request.args or request.args[0].startswith("-"):
             return None, None
-        candidate = (session.workspace_dir / request.args[0]).resolve()
+        candidate = (session.workdir / request.args[0]).resolve()
         try:
-            candidate.relative_to(session.workspace_dir.resolve())
+            candidate.relative_to(session.workdir.resolve())
         except ValueError:
             return None, None
         if not candidate.is_file():

@@ -37,8 +37,8 @@ def _request(sandbox_session, *, command: str = "python", args=None, timeout_ms:
 
 
     参数说明：
-    - ``sandbox_session``：来自 conftest.py 的 fixture，提供了一个真实
-      存在的 workspace_dir，policy 里的路径解析需要它。
+        - ``sandbox_session``：来自 conftest.py 的 fixture，提供了一个真实
+            存在的 workdir，policy 里的路径解析需要它。
     - ``command``：被测命令，默认 ``python``（白名单命令）。
     - ``args``：脚本参数列表；不传时默认 ``["hello.py"]``（合法参数）。
     - ``timeout_ms``：用默认上限内的 1000ms，避免误触发 timeout 分支。

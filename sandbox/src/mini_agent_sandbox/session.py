@@ -47,14 +47,14 @@ class SessionManager:
     def create_session(self, owner: str | None = None) -> SandboxSession:
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
         session_root = self.sessions_dir / session_id
-        workspace_dir = session_root / "workspace"
+        workdir = session_root / "workdir"
         logs_dir = session_root / "logs"
-        workspace_dir.mkdir(parents=True, exist_ok=False)
+        workdir.mkdir(parents=True, exist_ok=False)
         logs_dir.mkdir(parents=True, exist_ok=False)
         session = SandboxSession(
             session_id=session_id,
             root_dir=session_root,
-            workspace_dir=workspace_dir,
+            workdir=workdir,
             logs_dir=logs_dir,
             owner=owner,
         )
@@ -80,14 +80,14 @@ class SessionManager:
         if cached is not None:
             return cached
         session_root = self.sessions_dir / session_id
-        workspace_dir = session_root / "workspace"
+        workdir = session_root / "workdir"
         logs_dir = session_root / "logs"
-        if not workspace_dir.exists() or not logs_dir.exists():
+        if not workdir.exists() or not logs_dir.exists():
             raise SessionNotFoundError(f"Sandbox session not found: {session_id}")
         return SandboxSession(
             session_id=session_id,
             root_dir=session_root,
-            workspace_dir=workspace_dir,
+            workdir=workdir,
             logs_dir=logs_dir,
         )
 

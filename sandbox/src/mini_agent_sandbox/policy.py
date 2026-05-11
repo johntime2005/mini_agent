@@ -70,10 +70,10 @@ class CommandPolicy:
                 f"timeout_ms must be between 1 and {self.max_timeout_ms}, got {request.timeout_ms}"
             )
         if request.command == "python":
-            self._validate_python_args(request.args, session.workspace_dir)
+            self._validate_python_args(request.args, session.workdir)
 
-    def validate_workspace(self, workspace_dir: Path) -> None:
-        """对 workspace_dir 做一次性敏感路径校验。
+    def validate_workspace(self, workdir: Path) -> None:
+        """对 `workdir` 做一次性敏感路径校验。
 
         原实现把这个检查塞在 ``_resolve_workspace_path`` 里，对**每个
         candidate**重复执行；但只要 workspace 本身合法、candidate 又被
@@ -81,15 +81,15 @@ class CommandPolicy:
         落到 ``/etc`` 等敏感前缀里。把校验前移到 session 创建阶段，
         既避免重复也修正了原"几乎不触发"的问题。
         """
-        self._check_forbidden_path(workspace_dir.resolve())
+        self._check_forbidden_path(workdir.resolve())
 
-    def _validate_python_args(self, args: list[str], workspace_dir: Path) -> None:
+    def _validate_python_args(self, args: list[str], workdir: Path) -> None:
         if not args:
             raise ArgumentNotAllowedError("python requires a target .py file inside the sandbox workspace")
         script_arg = args[0]
         if script_arg.startswith("-"):
             raise ArgumentNotAllowedError("python flags such as -c or -m are not allowed in this sandbox")
-        script_path = self._resolve_workspace_path(workspace_dir, script_arg)
+        script_path = self._resolve_workspace_path(workdir, script_arg)
         if script_path.suffix != ".py":
             raise ArgumentNotAllowedError("Only .py files may be executed")
         for extra_arg in args[1:]:
@@ -99,11 +99,11 @@ class CommandPolicy:
         if script_path.is_file():
             self._validate_python_source(script_path)
 
-    def _resolve_workspace_path(self, workspace_dir: Path, relative_path: str) -> Path:
-        candidate = (workspace_dir / relative_path).resolve()
-        workspace_root = workspace_dir.resolve()
+    def _resolve_workspace_path(self, workdir: Path, relative_path: str) -> Path:
+        candidate = (workdir / relative_path).resolve()
+        workspace_root = workdir.resolve()
         if candidate != workspace_root and workspace_root not in candidate.parents:
-            raise PathForbiddenError(f"Path escapes sandbox workspace: {relative_path}")
+            raise PathForbiddenError(f"Path escapes sandbox workdir: {relative_path}")
         return candidate
 
     # ------------------------------------------------------------------

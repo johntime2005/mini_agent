@@ -18,7 +18,7 @@ from .ai_service import AIServiceError, generate_python_code
 
 class SessionResponse(BaseModel):
     session_id: str
-    workspace_dir: str
+    workdir: str
     logs_dir: str
 
 
@@ -107,7 +107,7 @@ def create_session() -> SessionResponse:
     session = service.create_session()
     return SessionResponse(
         session_id=session.session_id,
-        workspace_dir=str(session.workspace_dir),
+        workdir=str(session.workdir),
         logs_dir=str(session.logs_dir),
     )
 

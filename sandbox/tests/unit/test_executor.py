@@ -25,7 +25,7 @@ def _write(sandbox_session, name: str, content: str) -> None:
     """把一段 Python 源代码写进当前 sandbox workspace。
 
     """
-    (sandbox_session.workspace_dir / name).write_text(content, encoding="utf-8")
+    (sandbox_session.workdir / name).write_text(content, encoding="utf-8")
 
 
 def _request(sandbox_session, script: str, *, timeout_ms: int = 5000) -> SandboxRequest:

@@ -95,7 +95,7 @@ class LocalProcessExecutor(BaseExecutor):
         run_args.extend(request.args)
 
         popen_kwargs: dict = dict(
-            cwd=session.workspace_dir,
+            cwd=session.workdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.DEVNULL,

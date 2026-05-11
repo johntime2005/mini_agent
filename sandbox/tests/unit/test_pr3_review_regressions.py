@@ -44,7 +44,7 @@ IS_WINDOWS = sys.platform == "win32"
 
 
 def _write_script(session, name: str, content: str) -> None:
-    (session.workspace_dir / name).write_text(content, encoding="utf-8")
+    (session.workdir / name).write_text(content, encoding="utf-8")
 
 
 def _req(session, script: str, *, timeout_ms: int = 5000) -> SandboxRequest:
@@ -113,7 +113,7 @@ def test_executor_timeout_kills_process_group(sandbox_session):
     timeout fires we expect the entire process group to be SIGKILL'd
     so the grandchild does not survive the parent.
     """
-    pid_file = sandbox_session.workspace_dir / "grandchild.pid"
+    pid_file = sandbox_session.workdir / "grandchild.pid"
     script = (
         "import os, time\n"
         "pid = os.fork()\n"

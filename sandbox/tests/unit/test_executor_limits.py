@@ -31,7 +31,7 @@ IS_WINDOWS = sys.platform == "win32"
 
 
 def _write(sandbox_session, name: str, content: str) -> None:
-    (sandbox_session.workspace_dir / name).write_text(content, encoding="utf-8")
+    (sandbox_session.workdir / name).write_text(content, encoding="utf-8")
 
 
 def _request(sandbox_session, script: str, *, timeout_ms: int = 5000) -> SandboxRequest:
